@@ -1,0 +1,117 @@
+# =====================================================================
+# SATQuery AI - Object Detection Configuration (YOLO11 / xView)
+# Module: ml/object_detection
+# =====================================================================
+
+dataset:
+  name: "xView_full"
+  # Read-only source paths on external drive R:
+  raw_images_dir: "R:/SatQuery-AI/train_images/train_images"
+  raw_geojson_path: "R:/SatQuery-AI/Xview_data/labels/xView_train.geojson"
+  
+  # Local destination for processed YOLO tiles and labels (Git-ignored)
+  processed_dir: "ml/object_detection/data/processed"
+  dataset_yaml_path: "ml/object_detection/data/processed/dataset.yaml"
+
+# Sliding-Window Tiling Parameters
+tiling:
+  tile_size: 640              # Tile dimensions in pixels (640x640)
+  overlap: 0.2                # Overlap fraction (20% -> step size 512 px)
+  min_area_ratio: 0.3         # Keep clipped boxes if retained area >= 30% of original
+  empty_tile_retention: 0.1   # Retain 10% of pure background tiles to prevent FP imbalance
+  tile_format: "jpg"          # Tile image format ("jpg" or "png")
+  jpg_quality: 95             # JPEG compression quality
+
+# Scene-Level Partition (Guarantees zero spatial data leakage between splits)
+# Automatic full-dataset scene discovery and deterministic 80/20 train/val split
+scenes:
+  train_ratio: 0.8            # 80% train, 20% validation
+  seed: 42                    # Fixed random seed for deterministic splitting
+
+# =====================================================================
+# Extensible Multi-Class Mapping Architecture
+# Primary Target: Buildings (xView type_id 73 -> YOLO class 0)
+# All other 59 official xView classes preserved with contiguous IDs 1..59
+# =====================================================================
+primary_target:
+  name: "building"
+  xview_id: 73
+  yolo_id: 0
+
+# Full multi-class mapping dictionary (xview_type_id -> {name, yolo_id})
+classes:
+  # Primary Target
+  73: { name: "building", yolo_id: 0 }
+
+  # Aircraft
+  11: { name: "fixed_wing_aircraft", yolo_id: 1 }
+  12: { name: "small_aircraft", yolo_id: 2 }
+  13: { name: "cargo_plane", yolo_id: 3 }
+  15: { name: "helicopter", yolo_id: 4 }
+
+  # Passenger Vehicles
+  17: { name: "passenger_vehicle", yolo_id: 5 }
+  18: { name: "small_car", yolo_id: 6 }
+  19: { name: "bus", yolo_id: 7 }
+  20: { name: "pickup_truck", yolo_id: 8 }
+  21: { name: "utility_truck", yolo_id: 9 }
+
+  # Trucks
+  23: { name: "truck", yolo_id: 10 }
+  24: { name: "cargo_truck", yolo_id: 11 }
+  25: { name: "truck_w_box", yolo_id: 12 }
+  26: { name: "truck_tractor", yolo_id: 13 }
+  27: { name: "trailer", yolo_id: 14 }
+  28: { name: "truck_w_flatbed", yolo_id: 15 }
+  29: { name: "truck_w_liquid", yolo_id: 16 }
+  32: { name: "crane_truck", yolo_id: 17 }
+
+  # Railway
+  33: { name: "railway_vehicle", yolo_id: 18 }
+  34: { name: "passenger_car", yolo_id: 19 }
+  35: { name: "cargo_car", yolo_id: 20 }
+  36: { name: "flat_car", yolo_id: 21 }
+  37: { name: "tank_car", yolo_id: 22 }
+  38: { name: "locomotive", yolo_id: 23 }
+
+  # Maritime Vessels
+  40: { name: "maritime_vessel", yolo_id: 24 }
+  41: { name: "motorboat", yolo_id: 25 }
+  42: { name: "sailboat", yolo_id: 26 }
+  44: { name: "tugboat", yolo_id: 27 }
+  45: { name: "barge", yolo_id: 28 }
+  47: { name: "fishing_vessel", yolo_id: 29 }
+  49: { name: "ferry", yolo_id: 30 }
+  50: { name: "yacht", yolo_id: 31 }
+  51: { name: "container_ship", yolo_id: 32 }
+  52: { name: "oil_tanker", yolo_id: 33 }
+
+  # Engineering & Construction Equipment
+  53: { name: "engineering_vehicle", yolo_id: 34 }
+  54: { name: "tower_crane", yolo_id: 35 }
+  55: { name: "container_crane", yolo_id: 36 }
+  56: { name: "reach_stacker", yolo_id: 37 }
+  57: { name: "straddle_carrier", yolo_id: 38 }
+  59: { name: "mobile_crane", yolo_id: 39 }
+  60: { name: "dump_truck", yolo_id: 40 }
+  61: { name: "haul_truck", yolo_id: 41 }
+  62: { name: "scraper_tractor", yolo_id: 42 }
+  63: { name: "front_loader_bulldozer", yolo_id: 43 }
+  64: { name: "excavator", yolo_id: 44 }
+  65: { name: "cement_mixer", yolo_id: 45 }
+  66: { name: "ground_grader", yolo_id: 46 }
+
+  # Infrastructure & Specialized Structures
+  71: { name: "hut_tent", yolo_id: 47 }
+  72: { name: "shed", yolo_id: 48 }
+  74: { name: "aircraft_hangar", yolo_id: 49 }
+  76: { name: "damaged_building", yolo_id: 50 }
+  77: { name: "facility", yolo_id: 51 }
+  79: { name: "construction_site", yolo_id: 52 }
+  83: { name: "vehicle_lot", yolo_id: 53 }
+  84: { name: "helipad", yolo_id: 54 }
+  86: { name: "storage_tank", yolo_id: 55 }
+  89: { name: "shipping_container_lot", yolo_id: 56 }
+  91: { name: "shipping_container", yolo_id: 57 }
+  93: { name: "pylon", yolo_id: 58 }
+  94: { name: "tower", yolo_id: 59 }

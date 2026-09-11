@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+object_detection_processed.tar.gz
+ml/object_detection/data/
+runs/

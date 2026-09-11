@@ -1,0 +1,18 @@
+# SATQuery AI - Object Detection Local Gitignore
+# Ignore datasets (raw, interim, processed)
+data/
+
+# Ignore model checkpoints
+weights/*.pt
+!weights/best.pt
+!weights/.gitkeep
+
+# Ignore experiment runs, logs, and outputs
+runs/
+
+# Ignore archives and temporary files
+*.zip
+*.tar.gz
+*.tgz
+*.tif
+*.tiff
