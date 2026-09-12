@@ -216,3 +216,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# ML model weights
+ml/change_detection/weights/*.pth
+ml/landcover/weights/*.pth
+ml/optical_sar/weights/*.pt
+
+# Generated ML outputs
+ml/change_detection/outputs/
+ml/landcover/outputs/
+
+# Large local archives
+ml/landcover.zip
