@@ -414,6 +414,121 @@ class TestSatQueryAgent(unittest.TestCase):
         # Falls back to structured evidence report
         self.assertIn("DIRECT OBSERVATIONS", response.answer)
 
+    # -------------------------------------------------------------------------
+    # Test 14: Regression Test A - YOLO Success + Zero Detections (No Fabricated Count)
+    # -------------------------------------------------------------------------
+    def test_regression_yolo_zero_detections_no_fabricated_count(self):
+        """Verify that when YOLO returns zero detections, RS-Qwen cannot fabricate a numerical count."""
+        query = "Detect and count the major discrete objects visible in this remote sensing image."
+        images = ["test_empty.png"]
+
+        mock_yolo = {
+            "success": True,
+            "model": "YOLO11",
+            "image": "test_empty.png",
+            "results": {
+                "objects": [],
+                "counts": {},
+            },
+            "visualization": None,
+            "error": None,
+        }
+
+        # The exact hallucination observed in real Colab integration
+        hallucinated_qwen_output = (
+            "There are 10 major discrete objects visible in this remote sensing image."
+        )
+
+        with patch.object(TOOL_REGISTRY["yolo"], "execute", return_value=mock_yolo), \
+             patch.object(self.agent.vlm, "is_available", True), \
+             patch("ml.rs_qwen.inference.generate_response", return_value=hallucinated_qwen_output):
+            response = self.agent.analyze(query=query, images=images)
+
+        # 1. Confidence remains None (no detections above threshold)
+        self.assertIsNone(response.confidence)
+
+        # 2. Final answer must NOT contain the fabricated count
+        self.assertNotIn("10 major discrete objects", response.answer)
+        self.assertNotIn("10 objects", response.answer)
+        self.assertNotIn(" 10 ", response.answer)
+
+        # 3. Final answer must explicitly communicate no detections
+        self.assertIn("No discrete objects were detected above the configured confidence threshold", response.answer)
+
+        # 4. Tools recorded
+        self.assertIn("YOLO11", response.execution_trace.tools_used)
+        self.assertIn("RS-Qwen", response.execution_trace.tools_used)
+
+    # -------------------------------------------------------------------------
+    # Test 15: Regression Test B - YOLO Success + Real Detections (Count Preserved)
+    # -------------------------------------------------------------------------
+    def test_regression_yolo_real_detections_count_preserved(self):
+        """Verify that when YOLO detects objects, Qwen cannot alter the verified count."""
+        query = "Detect and count all buildings and vehicles."
+        images = ["urban.tif"]
+
+        mock_yolo = {
+            "success": True,
+            "model": "YOLO11",
+            "image": "urban.tif",
+            "results": {
+                "objects": [
+                    {"class": "building", "confidence": 0.90, "bbox": [0, 0, 10, 10]},
+                    {"class": "building", "confidence": 0.86, "bbox": [20, 20, 30, 30]},
+                    {"class": "passenger_vehicle", "confidence": 0.85, "bbox": [50, 50, 60, 60]},
+                ],
+                "counts": {"building": 2, "passenger_vehicle": 1},
+            },
+            "visualization": "runs/detect/urban.tif",
+            "error": None,
+        }
+
+        # Qwen tries to alter counts (saying 7 buildings and 4 vehicles instead of 2 and 1)
+        altered_qwen_output = "There are 7 buildings and 4 passenger_vehicles visible across the area."
+
+        with patch.object(TOOL_REGISTRY["yolo"], "execute", return_value=mock_yolo), \
+             patch.object(self.agent.vlm, "is_available", True), \
+             patch("ml.rs_qwen.inference.generate_response", return_value=altered_qwen_output):
+            response = self.agent.analyze(query=query, images=images)
+
+        # Supplied count is preserved and verified
+        self.assertIn("2 building(s)", response.answer)
+        self.assertIn("1 passenger_vehicle(s)", response.answer)
+        self.assertNotIn("7 buildings", response.answer)
+        self.assertNotIn("4 passenger_vehicles", response.answer)
+        self.assertAlmostEqual(response.confidence, 0.87, places=2)
+
+    # -------------------------------------------------------------------------
+    # Test 16: Regression Test C - YOLO Failure/Unavailable (Reports Unavailable, No Fabricated Count)
+    # -------------------------------------------------------------------------
+    def test_regression_yolo_failure_reports_unavailable_no_fabricated_count(self):
+        """Verify that when YOLO fails, detection unavailability is reported and guessed counts are blocked."""
+        query = "Find and count all ships in this image."
+        images = ["port.png"]
+
+        mock_failed_yolo = {
+            "success": False,
+            "model": "YOLO11",
+            "image": "port.png",
+            "results": {"objects": [], "counts": {}},
+            "visualization": None,
+            "error": "CUDA out of memory during YOLO inference",
+        }
+
+        # Qwen tries to guess a count despite specialist failure
+        guessed_qwen_output = "I can see 6 ships docked in the bay."
+
+        with patch.object(TOOL_REGISTRY["yolo"], "execute", return_value=mock_failed_yolo), \
+             patch.object(self.agent.vlm, "is_available", True), \
+             patch("ml.rs_qwen.inference.generate_response", return_value=guessed_qwen_output):
+            response = self.agent.analyze(query=query, images=images)
+
+        # Must report unavailable/failed
+        self.assertIn("Automated object detection could not be completed", response.answer)
+        # Must not adopt the fabricated count
+        self.assertNotIn("6 ships", response.answer)
+        self.assertEqual(response.confidence, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

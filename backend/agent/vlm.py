@@ -11,6 +11,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+from backend.agent.guard import GroundingGuard
 from backend.agent.schemas import TaskType
 
 logger = logging.getLogger("agent.vlm")
@@ -49,19 +50,23 @@ def build_grounded_prompt(
             counts = obj_ev.get("results", {}).get("counts", {})
             total_objs = sum(counts.values())
             if total_objs == 0:
-                evidence_lines.append("- Object Detection (YOLO11): 0 discrete objects detected above threshold.")
+                evidence_lines.append("- Object Detection Specialist (YOLO11): 0 discrete objects detected above the 0.25 confidence threshold.")
+                evidence_lines.append("- Detection Confidence: None (zero detections above threshold).")
+                evidence_lines.append("- STRICT INSTRUCTION: The detection specialist verified that ZERO objects exist in this image. You MUST state that zero / no discrete objects were detected. You must NEVER estimate, guess, or state any positive numerical count of objects (e.g. do NOT say 'there are 10 objects', 'several objects', etc.).")
             else:
                 counts_str = ", ".join(f"{c} {cls_name}(s)" for cls_name, c in counts.items())
-                evidence_lines.append(f"- Object Detection (YOLO11): {total_objs} object(s) detected: {counts_str}.")
-            if confidence is not None:
-                evidence_lines.append(f"- Detection Confidence: {confidence * 100:.1f}%.")
-            else:
-                evidence_lines.append("- Detection Confidence: N/A (zero detections above threshold).")
+                evidence_lines.append(f"- Object Detection Specialist (YOLO11): Exactly {total_objs} object(s) detected: {counts_str}.")
+                if confidence is not None:
+                    evidence_lines.append(f"- Detection Confidence: {confidence * 100:.1f}%.")
+                else:
+                    evidence_lines.append("- Detection Confidence: N/A.")
+                evidence_lines.append(f"- STRICT INSTRUCTION: You must report PRECISELY {total_objs} detected object(s) ({counts_str}). Do NOT alter, add, or subtract from this verified count.")
             vis = obj_ev.get("visualization")
             if vis:
                 evidence_lines.append(f"- Bounding Box Overlay: {vis}.")
         else:
-            evidence_lines.append(f"- Object Detection Error: {obj_ev.get('error', 'Execution failed')}.")
+            evidence_lines.append(f"- Object Detection Specialist (YOLO11): Execution failed or unavailable ({obj_ev.get('error', 'Execution error')}).")
+            evidence_lines.append("- STRICT INSTRUCTION: Automated object detection was not performed. You must state that detection is unavailable or failed, and you must NOT estimate or invent any object counts.")
 
     # 2. Bi-Temporal Change Detection (ChangeFormerV6)
     if "change_detection" in evidence:
@@ -79,8 +84,10 @@ def build_grounded_prompt(
             map_path = cd_ev.get("change_map")
             if map_path:
                 evidence_lines.append(f"- Change Map: {map_path}.")
+            evidence_lines.append(f"- STRICT INSTRUCTION: Report precisely {pct:.2f}% surface change. Do not invent alternative change percentages.")
         else:
-            evidence_lines.append(f"- Change Detection Error: {cd_ev.get('error', 'Execution failed')}.")
+            evidence_lines.append(f"- Change Detection Specialist: Execution failed or unavailable ({cd_ev.get('error', 'Execution failed')}).")
+            evidence_lines.append("- STRICT INSTRUCTION: State that bi-temporal change detection could not be performed; do not guess change percentages.")
 
     # 3. Land Cover Classification (SeCo-ECO)
     if "landcover" in evidence:
@@ -105,8 +112,13 @@ def build_grounded_prompt(
             joint_shape = reps.get("joint_encodings_shape", [1, 225, 768])
             gap_shape = reps.get("joint_gap_shape", [1, 768])
             evidence_lines.append(
-                f"- Optical + SAR Cross-Modal Fusion (CROMA-Base): Joint tokens {joint_shape}, "
+                f"- Optical + SAR Cross-Modal Specialist (CROMA-Base): Joint tokens {joint_shape}, "
                 f"Pooled scene embedding {gap_shape}."
+            )
+            evidence_lines.append(
+                "- CRITICAL CROMA NOTE: CROMA produces dense feature embeddings for cross-modal radar-optical analysis. "
+                "These tensor shapes are representation embeddings, NOT semantic object detections or land-cover classifications. "
+                "Do NOT describe these tensor shapes as discrete objects, water patches, or classified regions."
             )
             if confidence is not None:
                 evidence_lines.append(f"- Fusion Extraction Confidence: {confidence * 100:.1f}%.")
@@ -121,13 +133,19 @@ def build_grounded_prompt(
 
     parts.append(f"USER QUERY:\n{query.strip()}\n")
     parts.append(
-        "INSTRUCTIONS:\n"
-        "You are SatQuery AI's Remote Sensing Vision-Language Expert.\n"
-        "Synthesize a scientifically grounded, clear natural-language response based strictly on the image and empirical specialist evidence provided.\n"
-        "1. Direct Observations: State the observed empirical facts, detected objects, change percentages, or land-cover categories.\n"
-        "2. Remote Sensing Interpretation: Explain the geospatial significance of these observations.\n"
-        "3. Uncertainties & Caveats: Note sensor characteristics, resolution limits, and confidence metrics.\n"
-        "Do NOT hallucinate or invent counts, locations, or change metrics not verified by the specialist evidence."
+        "MANDATORY EVIDENCE GROUNDING INSTRUCTIONS:\n"
+        "You are SatQuery AI's Remote Sensing Vision-Language Specialist.\n"
+        "Synthesize a scientifically grounded, clear natural-language response based strictly on the image and empirical specialist evidence provided:\n"
+        "1. Use ONLY the supplied specialist model evidence for all quantitative and specialist findings.\n"
+        "2. Never invent or hallucinate object counts, change percentages, or classification categories.\n"
+        "3. Never estimate object counts from visual inspection when specialist evidence reports zero detections.\n"
+        "4. If evidence says zero detections, explicitly state that no objects were detected above the threshold.\n"
+        "5. If a specialist model failed or is unavailable, clearly state that automated analysis could not be performed; do not guess.\n"
+        "6. Do not turn general visual impressions into quantitative specialist measurements.\n"
+        "7. Format your response into the standard 3 sections:\n"
+        "   ### 1. DIRECT OBSERVATIONS (Model-Supported Evidence)\n"
+        "   ### 2. REMOTE SENSING INTERPRETATION\n"
+        "   ### 3. UNCERTAINTIES & SENSOR CAVEATS"
     )
     return "\n".join(parts)
 
@@ -186,7 +204,8 @@ class RSQwenEngine:
         """Generate final natural-language response grounded in specialist evidence.
 
         When RS-Qwen is available, delegates to ml.rs_qwen.inference.generate_response
-        with structured grounding context. Otherwise falls back to deterministic synthesis.
+        with structured grounding context and applies the deterministic GroundingGuard.
+        Otherwise falls back to deterministic synthesis.
         """
         if self.is_available and image_paths:
             from ml.rs_qwen.inference import generate_response
@@ -199,16 +218,30 @@ class RSQwenEngine:
             grounded_prompt = build_grounded_prompt(query, task, evidence, confidence)
 
             logger.info("Calling real ml.rs_qwen.generate_response for task '%s'...", task.value)
-            return generate_response(
+            raw_response = generate_response(
                 image_path=target_image,
                 question=grounded_prompt,
                 max_new_tokens=256,
                 do_sample=False,
                 model_path=self.model_path,
             )
+            # Enforce deterministic Python grounding guard on LLM output
+            return GroundingGuard.enforce(
+                raw_response=raw_response,
+                task=task,
+                evidence=evidence,
+                confidence=confidence,
+                query=query,
+            )
 
         # Deterministic grounded synthesis adhering strictly to the evidence policy
-        return self._generate_grounded_synthesis(query, task, evidence, confidence)
+        return GroundingGuard.enforce(
+            raw_response=self._generate_grounded_synthesis(query, task, evidence, confidence),
+            task=task,
+            evidence=evidence,
+            confidence=confidence,
+            query=query,
+        )
 
     def _generate_grounded_synthesis(
         self,
@@ -388,7 +421,8 @@ class RSQwenEngine:
 
             obs = (
                 f"Multimodal cross-attention extracted joint spatial tokens of shape {joint_shape} (225 patch tokens, 768-dim) "
-                f"and a pooled cross-modal scene embedding of shape {gap_shape}."
+                f"and a pooled cross-modal scene embedding of shape {gap_shape}. "
+                f"Note: CROMA provides dense cross-modal feature representations, not discrete semantic object detections or class segmentations."
             )
             sections.append(f"### 1. DIRECT OBSERVATIONS (Model-Supported Evidence)\n{obs}")
             sections.append(
@@ -401,6 +435,7 @@ class RSQwenEngine:
                 f"### 3. UNCERTAINTIES & SENSOR CAVEATS\n"
                 f"- Model: CROMA-Base (Contrastive Radar-Optical Masked Autoencoder)\n"
                 f"- Pipeline Extraction Confidence: {confidence * 100:.1f}%\n"
+                f"- Dense feature embeddings represent multimodal latent features; they do not constitute discrete object detections or semantic class masks.\n"
                 f"- Spatial patch resolution: 8x8 px per token. Radar speckle and incidence angle geometry can affect backscatter intensity."
             )
 
