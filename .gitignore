@@ -220,10 +220,17 @@ __marimo__/
 ml/change_detection/weights/*.pth
 ml/landcover/weights/*.pth
 ml/optical_sar/weights/*.pt
+ml/object_detection/weights/*.pt
 
 # Generated ML outputs
 ml/change_detection/outputs/
 ml/landcover/outputs/
+runs/
+
+# Local ML datasets / processed data
+ml/landcover/data/
+ml/object_detection/data/
 
 # Large local archives
 ml/landcover.zip
+object_detection_processed.tar.gz
