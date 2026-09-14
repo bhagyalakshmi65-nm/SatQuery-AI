@@ -234,3 +234,8 @@ ml/object_detection/data/
 # Large local archives
 ml/landcover.zip
 object_detection_processed.tar.gz
+# Node dependencies
+node_modules/
+
+# Temporary uploads
+backend/temp_uploads/
