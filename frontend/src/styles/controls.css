@@ -1,0 +1,998 @@
+/* ========================================================================= */
+/* SATQUERY AI — AUTHENTICATION & SECONDARY PAGES STYLING                    */
+/* ========================================================================= */
+
+/* ------------------------------------------------------------------------- */
+/* 1. AUTHENTICATION PAGES (Login & Signup)                                  */
+/* ------------------------------------------------------------------------- */
+.auth-canvas-root {
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--bg-canvas);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.auth-card-panel {
+  width: 100%;
+  max-width: 420px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeInDrop 0.2s ease;
+}
+
+.auth-card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.auth-brand-badge {
+  margin-bottom: 4px;
+}
+
+.auth-brand-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.auth-card-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 4px;
+  letter-spacing: -0.02em;
+}
+
+.auth-card-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.auth-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #B91C1C;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 12.5px;
+}
+
+.auth-form-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auth-field-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.auth-link-btn {
+  font-size: 11.5px;
+  color: var(--primary-purple);
+  font-weight: 500;
+}
+
+.auth-link-btn:hover {
+  text-decoration: underline;
+}
+
+.auth-text-input {
+  width: 100%;
+  padding: 10px 14px;
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: all 0.15s ease;
+}
+
+.auth-text-input:focus {
+  border-color: var(--primary-purple);
+  box-shadow: 0 0 0 3px rgba(108, 61, 245, 0.12);
+}
+
+.auth-submit-btn {
+  width: 100%;
+  padding: 11px 16px;
+  background-color: var(--primary-purple);
+  color: var(--text-white);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(108, 61, 245, 0.25);
+  margin-top: 4px;
+  transition: all 0.15s ease;
+}
+
+.auth-submit-btn:hover:not(:disabled) {
+  background-color: var(--primary-purple-hover);
+  transform: translateY(-1px);
+}
+
+.auth-demo-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  margin: 4px 0;
+}
+
+.auth-demo-divider::before,
+.auth-demo-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.auth-demo-divider span {
+  padding: 0 10px;
+}
+
+.auth-secondary-btn {
+  width: 100%;
+  padding: 9px 14px;
+  background-color: #F8FAFC;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.auth-secondary-btn:hover {
+  background-color: #EDE9FE;
+  color: var(--primary-purple);
+  border-color: var(--primary-purple-border);
+}
+
+.auth-card-footer {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.auth-footer-link {
+  color: var(--primary-purple);
+  font-weight: 600;
+}
+
+.auth-footer-link:hover {
+  text-decoration: underline;
+}
+
+/* ------------------------------------------------------------------------- */
+/* 2. SECONDARY PAGES (Dashboard, History, Saved, Datasets, Settings)       */
+/* ------------------------------------------------------------------------- */
+.dashboard-page-canvas,
+.history-page-canvas,
+.saved-page-canvas,
+.datasets-page-canvas,
+.settings-page-canvas,
+.help-page-canvas {
+  width: 100%;
+  max-width: 1140px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-top: 12px;
+}
+
+.dashboard-welcome-header,
+.history-page-header,
+.saved-page-header,
+.datasets-page-header,
+.settings-page-header,
+.help-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.dashboard-page-title,
+.history-title,
+.saved-title,
+.datasets-title,
+.settings-title,
+.help-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.dashboard-page-subtitle,
+.history-subtitle,
+.saved-subtitle,
+.datasets-subtitle,
+.settings-subtitle,
+.help-subtitle {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.dashboard-new-query-cta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--primary-purple);
+  color: var(--text-white);
+  border-radius: var(--radius-md);
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(108, 61, 245, 0.2);
+  transition: all 0.15s ease;
+}
+
+.dashboard-new-query-cta:hover {
+  background-color: var(--primary-purple-hover);
+}
+
+.dashboard-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.dashboard-stat-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.stat-number {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.dashboard-recent-section {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.recent-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.recent-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.recent-view-all-link {
+  font-size: 12.5px;
+  color: var(--primary-purple);
+  font-weight: 600;
+}
+
+.recent-queries-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.recent-queries-table th {
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.recent-queries-table td {
+  padding: 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.recent-queries-table tr:hover td {
+  background-color: #F8FAFC;
+}
+
+.task-pill-badge {
+  font-size: 11px;
+  font-weight: 600;
+  background-color: #EFF6FF;
+  color: #1D4ED8;
+  padding: 3px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+}
+
+.confidence-pill-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #047857;
+}
+
+/* History Cards */
+.history-cards-grid,
+.saved-cards-grid,
+.datasets-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.history-item-card,
+.saved-item-card,
+.dataset-item-card,
+.settings-card,
+.help-section-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-task-tag,
+.dataset-modality-tag,
+.saved-badge {
+  font-size: 11px;
+  font-weight: 600;
+  background-color: #F5F3FF;
+  color: #6C3DF5;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.history-card-header,
+.dataset-card-header,
+.saved-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.history-query-text,
+.saved-item-title,
+.dataset-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.history-answer-excerpt,
+.dataset-purpose {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.history-card-footer,
+.dataset-footer-bar,
+.saved-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.history-reopen-btn,
+.saved-open-btn,
+.dataset-explore-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-purple);
+}
+
+.history-reopen-btn:hover,
+.saved-open-btn:hover,
+.dataset-explore-btn:hover {
+  text-decoration: underline;
+}
+
+/* Settings Form */
+.settings-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-section-desc {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.settings-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.settings-input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  background-color: #FFFFFF;
+}
+
+.settings-input:focus {
+  border-color: var(--primary-purple);
+  outline: none;
+}
+
+.settings-save-btn {
+  background-color: var(--primary-purple);
+  color: var(--text-white);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.settings-logout-btn {
+  background-color: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.settings-logout-btn:hover {
+  background-color: #FEE2E2;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 16px;
+}
+
+.status-pill.online {
+  background-color: #ECFDF5;
+  color: #047857;
+}
+
+.status-pill.demo {
+  background-color: #FEF3C7;
+  color: #92400E;
+}
+
+.pill-indicator-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.specialist-tag-chip {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background-color: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 4px;
+  padding: 2px 8px;
+  color: #334155;
+}
+
+/* ------------------------------------------------------------------------- */
+/* HOW SATQUERY WORKS (REDESIGNED HELP PAGE)                                  */
+/* ------------------------------------------------------------------------- */
+.how-it-works-canvas {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 16px 64px 16px;
+}
+
+.how-it-works-header {
+  margin-bottom: 2px;
+}
+
+.how-it-works-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.025em;
+  margin: 0 0 6px 0;
+}
+
+.how-it-works-subtitle {
+  font-size: 14.5px;
+  color: #475569;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.how-step-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color 0.15s ease;
+}
+
+.how-step-card:hover {
+  border-color: #CBD5E1;
+}
+
+.how-step-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.how-step-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: var(--primary-purple);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.how-step-title {
+  font-size: 16.5px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0;
+}
+
+.how-step-desc {
+  font-size: 13.5px;
+  color: #475569;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* Example query chips */
+.how-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.how-query-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  color: #1E293B;
+  font-weight: 500;
+}
+
+.how-query-chip-icon {
+  color: var(--primary-purple);
+  display: flex;
+  align-items: center;
+}
+
+/* Flow diagram in step 2 */
+.how-flow-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.how-flow-node {
+  flex: 1;
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.how-flow-node-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.how-flow-node-sub {
+  font-size: 11.5px;
+  color: #64748B;
+}
+
+.how-flow-arrow {
+  color: var(--primary-purple);
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.how-note-banner {
+  background-color: #F5F3FF;
+  border: 1px solid #DDD6FE;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: #5B21B6;
+  line-height: 1.5;
+}
+
+/* Specialist Models Grid */
+.how-models-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.how-model-card {
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.how-model-tag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.how-model-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.how-model-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background-color: #EFF6FF;
+  color: #1D4ED8;
+}
+
+.how-model-pill.seg {
+  background-color: #ECFDF5;
+  color: #047857;
+}
+
+.how-model-pill.land {
+  background-color: #FEF3C7;
+  color: #92400E;
+}
+
+.how-model-pill.change {
+  background-color: #F5F3FF;
+  color: #6C3DF5;
+}
+
+.how-model-desc {
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Step 4 Multi-model diagram */
+.how-multi-model-box {
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.how-query-bubble {
+  background-color: #FFFFFF;
+  border: 1.5px solid #DDD6FE;
+  border-radius: 20px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6C3DF5;
+  text-align: center;
+}
+
+.how-agent-hub {
+  background-color: #6C3DF5;
+  color: #FFFFFF;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.how-branch-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+  max-width: 440px;
+}
+
+.how-branch-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1E293B;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.how-merge-node {
+  background-color: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.how-final-pill {
+  background-color: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  color: #047857;
+  border-radius: 20px;
+  padding: 7px 18px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* Step 5 Evidence Grid */
+.how-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.how-evidence-item {
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.how-evidence-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0F172A;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.how-evidence-desc {
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Step 6 Supported Workflows */
+.how-workflows-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.how-workflow-card {
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.how-workflow-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.how-workflow-desc {
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Step 7 Follow-up Conversational Flow */
+.how-convo-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin-top: 4px;
+}
+
+.how-convo-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.how-convo-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 4px;
+  min-width: 76px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.how-convo-tag.initial {
+  background-color: #EDE9FE;
+  color: #6C3DF5;
+}
+
+.how-convo-tag.followup {
+  background-color: #EFF6FF;
+  color: #2563EB;
+}
+
+.how-convo-tag.then {
+  background-color: #ECFDF5;
+  color: #059669;
+}
+
+.how-convo-text {
+  font-size: 13px;
+  color: #1E293B;
+  font-weight: 500;
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .how-flow-container {
+    flex-direction: column;
+  }
+  .how-models-grid,
+  .how-evidence-grid,
+  .how-workflows-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

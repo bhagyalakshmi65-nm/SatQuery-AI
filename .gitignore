@@ -216,3 +216,35 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# ML model weights
+ml/change_detection/weights/*.pth
+ml/landcover/weights/*.pth
+ml/optical_sar/weights/*.pt
+ml/object_detection/weights/*.pt
+
+# Generated ML outputs
+ml/change_detection/outputs/
+ml/landcover/outputs/
+runs/
+
+# Local ML datasets / processed data
+ml/landcover/data/
+ml/object_detection/data/
+
+# Large local archives
+ml/landcover.zip
+object_detection_processed.tar.gz
+# Node dependencies
+node_modules/
+
+# Temporary uploads
+backend/temp_uploads/
+
+# Local database
+backend/data/
+
+# Generated model outputs
+ml/object_detection/outputs/
+
+# Scratch files
+scratch/

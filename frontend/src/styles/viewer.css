@@ -1,0 +1,380 @@
+/* ==========================================================================
+   SatQuery AI — Geospatial Satellite Viewport Styles
+   ========================================================================== */
+
+.viewer-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #090d16; /* Clean deep neutral contrast for remote sensing imagery */
+  overflow: hidden;
+}
+
+/* 1. Top Layer Mode Toolbar */
+.viewer-top-bar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.layer-switcher-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  box-shadow: var(--shadow-sm);
+  pointer-events: auto;
+}
+
+.layer-btn {
+  padding: 5px 11px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.layer-btn:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.layer-btn.active {
+  background: var(--color-earth-blue);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* 2. Top-Right Map Navigation Controls */
+.viewer-tools-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 3px 4px;
+  box-shadow: var(--shadow-sm);
+  pointer-events: auto;
+}
+
+.map-control-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+}
+
+.map-control-btn:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.map-control-btn.active {
+  background: var(--color-earth-blue);
+  color: #ffffff;
+}
+
+.tools-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-medium);
+  margin: 0 2px;
+}
+
+.zoom-indicator-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 0 6px;
+  min-width: 44px;
+  text-align: center;
+}
+
+/* 3. Main Raster Canvas Stage */
+.raster-stage {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: crosshair;
+  overflow: hidden;
+}
+
+.raster-image-element {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+  transition: transform 0.08s ease-out;
+}
+
+/* Cartographic Precision Ticks */
+.reticle-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: rgba(255, 255, 255, 0.35);
+  border-style: solid;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.reticle-corner.tl {
+  top: 14px;
+  left: 14px;
+  border-width: 1.5px 0 0 1.5px;
+}
+
+.reticle-corner.tr {
+  top: 14px;
+  right: 14px;
+  border-width: 1.5px 1.5px 0 0;
+}
+
+.reticle-corner.bl {
+  bottom: 14px;
+  left: 14px;
+  border-width: 0 0 1.5px 1.5px;
+}
+
+.reticle-corner.br {
+  bottom: 14px;
+  right: 14px;
+  border-width: 0 1.5px 1.5px 0;
+}
+
+/* Scanning Sweep Beam */
+.viewport-scan-beam {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #3b82f6 50%, transparent);
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.7);
+  z-index: 25;
+  pointer-events: none;
+  animation: scan-vertical 2.2s ease-in-out infinite;
+}
+
+@keyframes scan-vertical {
+  0% { top: 0%; opacity: 0.2; }
+  50% { opacity: 0.95; }
+  100% { top: 100%; opacity: 0.2; }
+}
+
+/* 4. Bottom Viewport Telemetry HUD */
+.viewport-bottom-hud {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.carto-scale-badge {
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-xs);
+  padding: 4px 8px;
+  color: #f1f5f9;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.scale-notch-bar {
+  width: 70px;
+  height: 3px;
+  border-bottom: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid #ffffff;
+}
+
+.carto-telemetry-hud {
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-xs);
+  padding: 4px 12px;
+  color: #f1f5f9;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 5. Bi-Temporal Comparison (BEFORE / AFTER / CHANGE) */
+.comparison-split-stage {
+  flex: 1;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.comparison-half-pane {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.comparison-half-pane:last-child {
+  border-right: none;
+}
+
+.comparison-pane-tag {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  z-index: 20;
+}
+
+/* Quantitative Change Callout Banner */
+.change-metric-banner {
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid var(--color-terracotta);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #f8fafc;
+  z-index: 25;
+}
+
+.change-metric-value {
+  color: #f87171;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* 6. Empty Viewer State (No Image Uploaded Yet) */
+.empty-viewer-canvas {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+  background: var(--bg-subtle);
+  position: relative;
+}
+
+.empty-viewer-box {
+  max-width: 520px;
+  width: 100%;
+  border: 2px dashed var(--border-medium);
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  padding: 44px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow-xs);
+  transition: all 0.2s ease;
+}
+
+.empty-viewer-box.drag-active {
+  border-color: var(--color-earth-blue);
+  background: var(--color-earth-blue-light);
+}
+
+.empty-icon-circle {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--color-earth-blue-light);
+  color: var(--color-earth-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-viewer-title {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.empty-viewer-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  max-width: 380px;
+}
+
+.empty-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  background: var(--color-earth-blue);
+  color: #ffffff;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s ease;
+}
+
+.empty-action-btn:hover {
+  background: #1e40af;
+}
+
+.empty-spec-note {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}

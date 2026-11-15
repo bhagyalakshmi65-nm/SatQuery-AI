@@ -1,0 +1,40 @@
+# Configuration for SATQuery AI Land-Cover Classification (BigEarthNet-S2)
+
+model:
+  name: "resnet50"
+  num_classes: 19
+  pretrained: true
+  in_channels: 12
+  dropout: 0.2
+  weights_path: "ml/landcover/weights/best_model.pth"
+
+data:
+  dataset_name: "BigEarthNet-S2"
+  image_size: [120, 120]
+  bands:
+    - "B01"
+    - "B02"
+    - "B03"
+    - "B04"
+    - "B05"
+    - "B06"
+    - "B07"
+    - "B08"
+    - "B8A"
+    - "B09"
+    - "B11"
+    - "B12"
+  reflectance_scale: 10000.0
+
+training:
+  batch_size: 16
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  num_epochs: 10
+  early_stopping_patience: 3
+  pos_weight: null
+
+inference:
+  confidence_threshold: 0.5
+  output_dir: "ml/landcover/outputs"
+  save_visualization: true
