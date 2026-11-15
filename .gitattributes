@@ -1,0 +1,2 @@
+ml/landcover/weights/best_model.pth filter=lfs diff=lfs merge=lfs -text
+ml/change_detection/weights/ChangeFormerV6.pth filter=lfs diff=lfs merge=lfs -text
