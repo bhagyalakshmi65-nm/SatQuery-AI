@@ -223,6 +223,23 @@ def load_12band_sentinel2_raster(
     return cube
 
 
+def extract_rgb_composite(cube: np.ndarray) -> np.ndarray:
+    """
+    Extracts a visually normalized true-color RGB composite (B04, B03, B02)
+    from a 12-band Sentinel-2 cube of shape (12, H, W).
+    Returns uint8 array of shape (H, W, 3).
+    """
+    # In SeCo-ECO band order: index 3 is B04 (Red), index 2 is B03 (Green), index 1 is B02 (Blue)
+    rgb = cube[[3, 2, 1], :, :].transpose(1, 2, 0).astype(np.float32)
+    
+    # Robust 2% - 98% percentile contrast stretch
+    p2, p98 = np.percentile(rgb, (2, 98))
+    if p98 > p2:
+        rgb = (rgb - p2) / (p98 - p2)
+    rgb = np.clip(rgb * 255.0, 0, 255).astype(np.uint8)
+    return rgb
+
+
 class BigEarthNetDataset(Dataset):
     """
     PyTorch Dataset for BigEarthNet-S2 12-band multispectral classification.

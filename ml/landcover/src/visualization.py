@@ -4,6 +4,8 @@ Extracts True-Color RGB Composite (B04, B03, B02) from the 12-band cube.
 """
 
 import os
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image

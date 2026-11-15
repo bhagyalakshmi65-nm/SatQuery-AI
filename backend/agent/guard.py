@@ -6,7 +6,7 @@ Enforces deterministic evidence grounding on vision-language model responses:
      Guarantees final answer states no objects were detected above threshold.
    - Real detections: Strictly preserves verified specialist counts and prevents the LLM
      from altering or fabricating different counts.
-   - Failure/Unavailable: Explicitly communicates detection was not performed; prevents guessed counts.
+   - Failure/Unavailable: Explains detection was not performed; prevents guessed counts.
 2. Change Detection (ChangeFormerV6):
    - Preserves verified change percentage and pixel measurements.
    - Prevents fabricated change magnitudes when specialist model failed.
@@ -14,6 +14,9 @@ Enforces deterministic evidence grounding on vision-language model responses:
    - Preserves verified classified classes and confidence thresholds.
 4. Optical + SAR (CROMA):
    - Prevents interpreting raw tensor representation shapes as semantic objects or classes.
+5. Natural Language Output:
+   - Strips internal headings (###), developer notices, and technical jargon.
+   - Delivers concise, conversational, human-analyst answers.
 """
 
 from __future__ import annotations
@@ -26,8 +29,6 @@ from backend.agent.schemas import TaskType
 logger = logging.getLogger("agent.guard")
 
 # Regex to detect positive object counts asserted in natural language:
-# Matches: "10 major discrete objects", "There are 10 objects", "found 5 buildings", "contains 3 vehicles"
-# Does NOT match "0 objects", "zero objects", "no objects", "no discrete objects"
 POSITIVE_COUNT_REGEX = re.compile(
     r"(?i)\b(?:there\s+(?:is|are)|contains?|detect(?:ed|s)?|found|identif(?:y|ied)|see|visible)?\s*"
     r"(?:about\s+|approximately\s+|roughly\s+)?"
@@ -40,7 +41,6 @@ def scrub_fabricated_counts(text: str) -> str:
     """Remove any sentences asserting positive counts of objects when zero detections were found."""
     if not text:
         return ""
-    # Split into sentences (by period, exclamation, question mark, or newlines)
     sentences = re.split(r"(?<=[.!?\n])\s+", text.strip())
     clean_sentences: List[str] = []
     for s in sentences:
@@ -52,6 +52,30 @@ def scrub_fabricated_counts(text: str) -> str:
             continue
         clean_sentences.append(s_clean)
     return " ".join(clean_sentences).strip()
+
+
+def sanitize_to_natural_english(text: str) -> str:
+    """Strip out markdown headings (###), internal notices, and format into natural paragraphs."""
+    if not text:
+        return ""
+
+    # Remove internal bracketed notices
+    text = re.sub(r"\[Notice:[^\]]+\]", "", text, flags=re.IGNORECASE)
+
+    # Remove section headings like "### 1. DIRECT OBSERVATIONS (Model-Supported Evidence)"
+    text = re.sub(r"###\s*\d*\.?\s*[A-Z\s\(\)]+(?:\n|$)", "\n\n", text)
+
+    # Remove lingering markdown heading hashes
+    text = re.sub(r"^#{1,6}\s*", "", text, flags=re.MULTILINE)
+
+    # Remove internal technical prompts or caveats if present in answer
+    text = re.sub(r"(?i)Confidence:\s*[\d\.]+%.*?(?=\n\n|\Z)", "", text)
+    text = re.sub(r"(?i)Model:\s*[\w\-\s]+(?=\n|\Z)", "", text)
+    text = re.sub(r"(?i)Why this answer was produced:.*?(?=\n\n|\Z)", "", text, flags=re.DOTALL)
+
+    # Clean up multiple newlines and spaces
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    return "\n\n".join(paragraphs).strip()
 
 
 class GroundingGuard:
@@ -70,23 +94,24 @@ class GroundingGuard:
         if not raw_response:
             raw_response = ""
 
-        # 1. Object Detection Guard
-        if task == TaskType.SINGLE_IMAGE_OBJECT_DETECTION or "object_detection" in evidence:
-            return cls._guard_object_detection(raw_response, evidence.get("object_detection"), confidence, query)
+        # 1. Compound Spatial GIS Guard (highest precedence for multi-specialist pipelines)
+        if "gis" in evidence:
+            result = cls._guard_gis(raw_response, evidence.get("gis"), confidence, query)
+        elif task == TaskType.SINGLE_IMAGE_OBJECT_DETECTION or "object_detection" in evidence:
+            result = cls._guard_object_detection(raw_response, evidence.get("object_detection"), confidence, query)
+        elif task == TaskType.BI_TEMPORAL_CHANGE or "change_detection" in evidence:
+            result = cls._guard_change_detection(raw_response, evidence.get("change_detection"), confidence, query)
+        elif task == TaskType.CROSS_MODAL_OPTICAL_SAR or "optical_sar" in evidence:
+            result = cls._guard_optical_sar(raw_response, evidence.get("optical_sar"), confidence, query, evidence=evidence)
+        elif "segmentation" in evidence and not ("landcover" in evidence and evidence["landcover"].get("success")):
+            result = cls._guard_segmentation(raw_response, evidence.get("segmentation"), confidence, query)
+        elif task == TaskType.SINGLE_IMAGE_LANDCOVER or "landcover" in evidence:
+            result = cls._guard_landcover(raw_response, evidence.get("landcover"), confidence, query)
+        else:
+            result = raw_response
 
-        # 2. Bi-Temporal Change Detection Guard
-        if task == TaskType.BI_TEMPORAL_CHANGE or "change_detection" in evidence:
-            return cls._guard_change_detection(raw_response, evidence.get("change_detection"), confidence, query)
-
-        # 3. Optical + SAR Cross-Modal Guard
-        if task == TaskType.CROSS_MODAL_OPTICAL_SAR or "optical_sar" in evidence:
-            return cls._guard_optical_sar(raw_response, evidence.get("optical_sar"), confidence, query)
-
-        # 4. Land Cover Guard
-        if task == TaskType.SINGLE_IMAGE_LANDCOVER or "landcover" in evidence:
-            return cls._guard_landcover(raw_response, evidence.get("landcover"), confidence, query)
-
-        return raw_response
+        # Final pass: sanitize any leftover ### or internal headers into clean natural English
+        return sanitize_to_natural_english(result)
 
     @classmethod
     def _guard_object_detection(
@@ -97,86 +122,36 @@ class GroundingGuard:
         query: str,
     ) -> str:
         """Enforce strict evidence grounding for object detection."""
-        # A. YOLO unavailable or failed
         if not obj_ev or not obj_ev.get("success", False):
-            err = obj_ev.get("error", "Specialist execution failed or model unavailable") if obj_ev else "Object detection model not executed"
-            scrubbed = scrub_fabricated_counts(raw_response)
-            direct_obs = f"Automated object detection could not be completed: {err}. No verified object counts are available."
-            return (
-                f"### 1. DIRECT OBSERVATIONS (Model-Supported Evidence)\n{direct_obs}\n\n"
-                f"### 2. REMOTE SENSING INTERPRETATION\n"
-                f"{scrubbed if scrubbed else 'Automated object analysis could not locate features due to tool execution failure.'}\n\n"
-                f"### 3. UNCERTAINTIES & SENSOR CAVEATS\n"
-                f"Confidence: 0.0%. Please check image path and model checkpoint integrity."
-            )
+            return "Automated object detection could not be completed for this scene. Precise object counting could not be derived from the detector."
 
         results = obj_ev.get("results", {})
         counts = results.get("counts", {})
         total_objs = sum(counts.values())
 
-        # B. ZERO DETECTIONS CASE
+        # ZERO DETECTIONS CASE
         if total_objs == 0:
-            zero_obs = "No discrete objects were detected above the configured confidence threshold (0.25) by the YOLO11 specialist model."
-            has_fabricated_count = bool(POSITIVE_COUNT_REGEX.search(raw_response))
-            scrubbed = scrub_fabricated_counts(raw_response)
+            return "No discrete objects were detected above the configured confidence threshold."
 
-            # If the response only contained the fabricated count or is empty after scrubbing:
-            if not scrubbed or (has_fabricated_count and len(scrubbed) < 20):
-                return (
-                    f"### 1. DIRECT OBSERVATIONS (Model-Supported Evidence)\n{zero_obs}\n\n"
-                    f"### 2. REMOTE SENSING INTERPRETATION\n"
-                    f"The scene does not exhibit high-contrast signatures corresponding to vehicles, "
-                    f"isolated buildings, or specialized industrial structures in the model taxonomy.\n\n"
-                    f"### 3. UNCERTAINTIES & SENSOR CAVEATS\n"
-                    f"- Mean Detection Confidence: N/A (zero detections above threshold)\n"
-                    f"- Detection Model: YOLO11 (xView 60-class taxonomy)\n"
-                    f"- Bounding Box Overlay: None\n"
-                    f"- Small or partially occluded targets below GSD limit may remain undetected."
-                )
-
-            # If scrubbed text contains 3-tier structure, replace Section 1
-            if "### 1. DIRECT OBSERVATIONS" in scrubbed:
-                scrubbed = re.sub(
-                    r"### 1\. DIRECT OBSERVATIONS[^\n]*\n.*?(?=### 2\.|\Z)",
-                    f"### 1. DIRECT OBSERVATIONS (Model-Supported Evidence)\n{zero_obs}\n\n",
-                    scrubbed,
-                    flags=re.DOTALL,
-                )
-                return scrubbed
-
-            # If the response doesn't mention zero detections, ensure it is stated
-            if "no discrete objects" not in scrubbed.lower() and "zero objects" not in scrubbed.lower() and "no objects" not in scrubbed.lower():
-                return (
-                    f"### 1. DIRECT OBSERVATIONS (Model-Supported Evidence)\n{zero_obs}\n\n"
-                    f"### 2. REMOTE SENSING INTERPRETATION\n{scrubbed}"
-                )
-
-            return scrubbed
-
-        # C. REAL DETECTIONS CASE (total_objs > 0)
-        counts_str = ", ".join(f"{c} {k}(s)" for k, c in counts.items())
-        verified_obs = f"A total of {total_objs} object(s) were detected by YOLO11: {counts_str}."
+        # POSITIVE DETECTIONS CASE
+        counts_str = ", ".join(f"{c} {k}" for k, c in counts.items())
+        verified_sentence = f"I detected {total_objs} object(s) in the image: {counts_str}."
 
         modified = raw_response
-
-        # Correct any conflicting counts for detected classes
         for cls_name, true_count in counts.items():
-            cls_pattern = re.compile(rf"\b([1-9]\d*)\s+{re.escape(cls_name)}s?\b", re.IGNORECASE)
+            cls_pattern = re.compile(rf"\b([1-9]\d*)\s+{re.escape(cls_name)}s?(?:\([sS]\))?\b", re.IGNORECASE)
             for match in cls_pattern.finditer(modified):
                 stated_num = int(match.group(1))
                 if stated_num != true_count:
-                    logger.info("Grounding Guard corrected count for %s: %d -> %d", cls_name, stated_num, true_count)
                     modified = modified[:match.start()] + f"{true_count} {cls_name}(s)" + modified[match.end():]
 
-        # If modified uses structured sections, ensure Section 1 has verified counts
-        if "### 1. DIRECT OBSERVATIONS" in modified:
-            if str(total_objs) not in modified:
-                modified = re.sub(
-                    r"(### 1\. DIRECT OBSERVATIONS[^\n]*\n)",
-                    rf"\1{verified_obs}\n",
-                    modified,
-                )
-            return modified
+        number_words = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}
+        word = number_words.get(total_objs)
+        has_total = str(total_objs) in modified or (word and re.search(rf"\b{word}\b", modified, re.IGNORECASE))
+        has_all_classes = all(f"{c} {k}" in modified or f"{c} {k}(s)" in modified for k, c in counts.items())
+
+        if not has_total and not has_all_classes:
+            modified = f"{verified_sentence} {modified}"
 
         return modified
 
@@ -190,40 +165,29 @@ class GroundingGuard:
     ) -> str:
         """Enforce strict evidence grounding for change detection."""
         if not cd_ev or not cd_ev.get("success", False):
-            err = cd_ev.get("error", "Change detection failed or unavailable") if cd_ev else "Change detection model not executed"
-            direct_obs = f"Bi-temporal change analysis could not be completed: {err}."
-            return (
-                f"### 1. DIRECT OBSERVATIONS (Model-Supported Evidence)\n{direct_obs}\n\n"
-                f"### 2. REMOTE SENSING INTERPRETATION\nSurface comparison could not be derived due to input/execution error.\n\n"
-                f"### 3. UNCERTAINTIES & SENSOR CAVEATS\nConfidence: 0.0%. Verify that both earlier and later co-registered rasters are provided."
-            )
+            return "I couldn't complete the requested comparison because I couldn't identify two analyzable scenes."
 
         change_pct = cd_ev.get("change_percentage", 0.0)
         changed_px = cd_ev.get("changed_pixels", 0)
         total_px = cd_ev.get("total_pixels", 0)
-        verified_obs = (
-            f"Surface change analysis between Image A and Image B measured {change_pct:.2f}% changed area "
-            f"({changed_px:,} changed pixels out of {total_px:,} total evaluated pixels)."
-        )
+
+        verified_sentence = f"Surface change analysis indicates approximately {change_pct:.1f}% changed area."
 
         modified = raw_response
-
-        # Check if LLM fabricated a conflicting change percentage
         pct_pattern = re.compile(r"\b(\d+(?:\.\d+)?)%\s*(?:of\s+the\s+surface|change|surface\s+change)?\b", re.IGNORECASE)
         for match in pct_pattern.finditer(modified):
             stated_pct = float(match.group(1))
             if abs(stated_pct - change_pct) > 0.5:
-                logger.info("Grounding Guard corrected change percentage: %.2f%% -> %.2f%%", stated_pct, change_pct)
-                modified = modified[:match.start()] + f"{change_pct:.2f}%" + modified[match.end():]
+                modified = modified[:match.start()] + f"{change_pct:.1f}%" + modified[match.end():]
 
-        if "### 1. DIRECT OBSERVATIONS" in modified:
-            if f"{change_pct:.2f}%" not in modified and f"{change_pct:.1f}%" not in modified and f"{int(change_pct)}%" not in modified:
-                modified = re.sub(
-                    r"(### 1\. DIRECT OBSERVATIONS[^\n]*\n)",
-                    rf"\1{verified_obs}\n",
-                    modified,
-                )
-            return modified
+        # Ensure surface change is mentioned
+        has_pct = bool(
+            re.search(rf"\b{change_pct:.1f}%", modified)
+            or re.search(rf"\b{int(round(change_pct))}%", modified)
+            or f"{change_pct}%" in modified
+        )
+        if "surface change" not in modified.lower() and "changed area" not in modified.lower() and not has_pct:
+            modified = f"{verified_sentence} {modified}"
 
         return modified
 
@@ -234,45 +198,20 @@ class GroundingGuard:
         croma_ev: Optional[Dict[str, Any]],
         confidence: Optional[float],
         query: str,
+        evidence: Optional[Dict[str, Any]] = None,
     ) -> str:
-        """Enforce strict evidence grounding for CROMA Optical + SAR fusion."""
-        if not croma_ev or not croma_ev.get("success", False):
-            err = croma_ev.get("error", "Optical + SAR fusion failed") if croma_ev else "CROMA model not executed"
-            return (
-                f"### 1. DIRECT OBSERVATIONS (Model-Supported Evidence)\n"
-                f"Optical + SAR feature fusion could not be completed: {err}.\n\n"
-                f"### 2. REMOTE SENSING INTERPRETATION\n"
-                f"Cross-modal analysis requires co-registered Sentinel-2 (optical) and Sentinel-1 (SAR) data.\n\n"
-                f"### 3. UNCERTAINTIES & SENSOR CAVEATS\n"
-                f"Confidence: 0.0%. Verify that both radar (VV/VH) and optical bands are present."
-            )
+        """Enforce strict evidence grounding for Optical + SAR fusion."""
+        evidence = evidence or {}
+        has_croma_success = bool(croma_ev and croma_ev.get("success", False))
+        has_sar_success = bool(evidence.get("sar_analyzer", {}).get("success", False))
 
-        # Ensure raw tensor shapes are NOT described as discrete semantic object counts
+        if not has_croma_success and not has_sar_success:
+            return "Optical and radar cross-modal analysis requires both Sentinel-2 (optical) and Sentinel-1 (SAR) data."
+
         modified = raw_response
-
-        # Guard against interpreting raw tensor shapes as discrete objects or classes
         tensor_object_pattern = re.compile(r"(?i)\b(?:225|768)\s+(?:discrete\s+)?(?:objects|classes|targets|buildings|structures)\b")
         if tensor_object_pattern.search(modified):
-            logger.info("Grounding Guard sanitized raw tensor shape misinterpretation as discrete objects.")
-            modified = tensor_object_pattern.sub("dense feature tokens", modified)
-
-        # Guard against hallucinating that CROMA detected objects
-        if POSITIVE_COUNT_REGEX.search(modified):
-            logger.info("Grounding Guard sanitized false object detection claims in CROMA cross-modal output.")
-            modified = scrub_fabricated_counts(modified)
-
-        if "### 1. DIRECT OBSERVATIONS" in modified:
-            if "CROMA" not in modified and "225" not in modified:
-                clarification = (
-                    f"Multimodal cross-attention extracted joint spatial tokens (225 patch tokens, 768-dim). "
-                    f"Note: CROMA provides dense feature representations, not discrete semantic object detections."
-                )
-                modified = re.sub(
-                    r"(### 1\. DIRECT OBSERVATIONS[^\n]*\n)",
-                    rf"\1{clarification}\n",
-                    modified,
-                )
-            return modified
+            modified = tensor_object_pattern.sub("dense feature representations", modified)
 
         return modified
 
@@ -286,13 +225,77 @@ class GroundingGuard:
     ) -> str:
         """Enforce strict evidence grounding for land cover classification."""
         if not lc_ev or not lc_ev.get("success", False):
-            err = lc_ev.get("error", "Land-cover classification failed") if lc_ev else "Land cover model not executed"
-            return (
-                f"### 1. DIRECT OBSERVATIONS (Model-Supported Evidence)\n"
-                f"Land-cover classification status: {err}.\n\n"
-                f"### 2. REMOTE SENSING INTERPRETATION\n"
-                f"Multispectral class distribution requires 12-band Level-2A Sentinel-2 surface reflectance.\n\n"
-                f"### 3. UNCERTAINTIES & SENSOR CAVEATS\n"
-                f"Confidence: {confidence * 100:.1f}%. Supported input: 12 bands [B01..B12]."
-            )
+            err_msg = lc_ev.get("error") if lc_ev else None
+            if err_msg and "12-band" in err_msg:
+                return err_msg
+            return "Multispectral land-cover classification requires 12-band Sentinel-2 surface reflectance. The provided input is 3-channel visual imagery (RGB)."
+        return raw_response
+
+    @classmethod
+    def _guard_gis(
+        cls,
+        raw_response: str,
+        gis_ev: Optional[Dict[str, Any]],
+        confidence: Optional[float],
+        query: str,
+    ) -> str:
+        """Enforce strict evidence grounding for compound GIS spatial queries."""
+        if not gis_ev or not gis_ev.get("success", False):
+            return "The spatial calculations could not be completed for the requested criteria."
+
+        res = gis_ev.get("results", {})
+        op = res.get("operation")
+        modified = raw_response
+
+        if op == "distance_filter":
+            m_cnt = res.get("matches_count", 0)
+            thresh = int(res.get("threshold_meters", 100))
+            ref_feat = res.get("reference_feature", "river")
+            verified_obs = f"{m_cnt} detected building(s)/object(s) are within {thresh}m of the {ref_feat}."
+
+            if m_cnt == 0:
+                modified = scrub_fabricated_counts(modified)
+
+            if str(m_cnt) not in modified:
+                modified = f"{verified_obs} {modified}"
+
+            return modified
+
+        elif op == "containment_filter":
+            c_cnt = res.get("contained_count", 0)
+            cont = res.get("container", "specified region")
+            verified_obs = f"There are {c_cnt} detected building(s) located inside the {cont} boundary."
+
+            if c_cnt == 0:
+                modified = scrub_fabricated_counts(modified)
+
+            if str(c_cnt) not in modified:
+                modified = f"{verified_obs} {modified}"
+
+            return modified
+
+        elif op == "area_delta":
+            pct = res.get("percentage_change", 0.0)
+            trend = res.get("trend", "change")
+            feat = res.get("feature", "feature")
+            verified_obs = f"Comparative analysis identified a {trend} of approximately {abs(pct):.1f}% in {feat} coverage."
+
+            if f"{abs(pct):.1f}%" not in modified and f"{int(abs(pct))}%" not in modified:
+                modified = f"{verified_obs} {modified}"
+
+            return modified
+
+        return modified
+
+    @classmethod
+    def _guard_segmentation(
+        cls,
+        raw_response: str,
+        seg_ev: Optional[Dict[str, Any]],
+        confidence: Optional[float],
+        query: str,
+    ) -> str:
+        """Enforce strict evidence grounding for semantic segmentation."""
+        if not seg_ev or not seg_ev.get("success", False):
+            return "Semantic segmentation could not be completed for the specified region."
         return raw_response

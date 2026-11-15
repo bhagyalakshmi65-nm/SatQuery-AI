@@ -42,6 +42,16 @@ agent = SatQueryAgent()
 UPLOAD_DIR = Path("backend/temp_uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+from fastapi.staticfiles import StaticFiles
+app.mount("/static", StaticFiles(directory=str(UPLOAD_DIR)), name="static")
+
+# Mount Smart Satellite Monitoring and Change Alert System
+from backend.monitoring.db import init_db
+from backend.monitoring.routes import router as monitoring_router
+
+init_db()
+app.include_router(monitoring_router)
+
 
 class JSONAnalyzeRequest(BaseModel):
     query: str

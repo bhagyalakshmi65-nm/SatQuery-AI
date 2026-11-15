@@ -10,7 +10,15 @@ inside src/inference.py.
 
 from typing import Optional, Dict, Any
 
-from .src.inference import classify_landcover as _classify_landcover
+from .src.inference import (
+    classify_landcover as _classify_landcover,
+    validate_landcover_input as _validate_landcover_input,
+)
+
+
+def validate_landcover_input(image_path: str) -> Dict[str, Any]:
+    """Validates whether an input image or directory satisfies the 12-band Sentinel-2 requirement."""
+    return _validate_landcover_input(image_path=image_path)
 
 
 def classify_landcover(
@@ -41,7 +49,7 @@ def classify_landcover(
     )
 
 
-__all__ = ["classify_landcover"]
+__all__ = ["classify_landcover", "validate_landcover_input"]
 
 
 if __name__ == "__main__":

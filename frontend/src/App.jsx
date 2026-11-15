@@ -1,106 +1,217 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import Header from './components/Header/Header.jsx';
-import ImageViewer from './components/ImageViewer/ImageViewer.jsx';
-import QueryInput from './components/QueryInput/QueryInput.jsx';
-import AnalysisProgress from './components/AnalysisProgress/AnalysisProgress.jsx';
-import ResultsPanel from './components/ResultsPanel/ResultsPanel.jsx';
-import EvidencePanel from './components/EvidencePanel/EvidencePanel.jsx';
-import ExecutionTrace from './components/ExecutionTrace/ExecutionTrace.jsx';
-import ArchitectureSection from './components/ArchitectureSection/ArchitectureSection.jsx';
-import { analyzeWithAgent, checkBackendHealth } from './services/agentApi.js';
+import React, { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import { AppLayout } from './components/layout/AppLayout.jsx';
+import { ConversationWorkspace } from './components/chat/ConversationWorkspace.jsx';
+import { DashboardPage } from './components/dashboard/DashboardPage.jsx';
+import { HistoryPage } from './components/history/HistoryPage.jsx';
+import { SavedResultsPage } from './components/saved/SavedResultsPage.jsx';
+import { DatasetsPage } from './components/datasets/DatasetsPage.jsx';
+import { HelpDocsPage } from './components/help/HelpDocsPage.jsx';
+import { SettingsPage } from './components/settings/SettingsPage.jsx';
+import { LoginPage } from './components/auth/LoginPage.jsx';
+import { SignupPage } from './components/auth/SignupPage.jsx';
+import { OnboardingExperience } from './components/onboarding/OnboardingExperience.jsx';
+import { HowItWorksModal } from './components/onboarding/HowItWorksModal.jsx';
+import { MonitoringPage } from './components/monitoring/MonitoringPage.jsx';
+import { AlertDetailModal } from './components/monitoring/AlertDetailModal.jsx';
+import { fetchUnreadAlertsCount } from './services/monitoringApi.js';
 
-export default function App() {
-  const [files, setFiles] = useState([]);
-  const [query, setQuery] = useState('');
-  const [lastQuery, setLastQuery] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [response, setResponse] = useState(null);
-  const [error, setError] = useState(null);
-  const [backendStatus, setBackendStatus] = useState({ online: false, specialists: [] });
+/**
+ * AppContent controls view routing inside the active authentication context.
+ * Always defaults to the clean New Query / Home screen on startup and browser refresh.
+ * Shows OnboardingExperience on the user's first visit before the main home page.
+ */
+function AppContent() {
+  const [currentView, setCurrentView] = useState('new-query');
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
+  const [activeAlertModal, setActiveAlertModal] = useState(null);
+  const [isOnboarding, setIsOnboarding] = useState(() => {
+    try {
+      return localStorage.getItem('satquery_onboarding_completed') !== 'true';
+    } catch {
+      return false;
+    }
+  });
+  const { user, loading } = useAuth();
 
-  // Probe backend health periodically
-  const checkHealth = useCallback(async () => {
-    const status = await checkBackendHealth();
-    setBackendStatus(status);
+  // Periodically check for unread alerts
+  React.useEffect(() => {
+    let mounted = true;
+    const checkUnread = async () => {
+      try {
+        const res = await fetchUnreadAlertsCount();
+        if (mounted && typeof res?.unread_count === 'number') {
+          setUnreadAlertsCount(res.unread_count);
+        }
+      } catch {
+        // Ignore background poll errors
+      }
+    };
+
+    checkUnread();
+    const timer = setInterval(checkUnread, 30000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
   }, []);
 
-  useEffect(() => {
-    checkHealth();
-    const interval = setInterval(checkHealth, 15000);
-    return () => clearInterval(interval);
-  }, [checkHealth]);
-
-  const handleSubmit = async () => {
-    if (files.length === 0) {
-      setError('Please upload at least one satellite image file first.');
-      return;
-    }
-    if (!query.trim()) {
-      setError('Please enter a natural language question about the satellite scene.');
-      return;
-    }
-
-    setIsAnalyzing(true);
-    setError(null);
-    setLastQuery(query);
-
+  // Onboarding Completion & Skip Handler
+  const handleFinishOnboarding = () => {
     try {
-      const result = await analyzeWithAgent(query, files);
-      setResponse(result);
+      localStorage.setItem('satquery_onboarding_completed', 'true');
     } catch (err) {
-      console.error('Agent analysis error:', err);
-      setError(err.message || 'An unexpected error occurred during agent analysis.');
-    } finally {
-      setIsAnalyzing(false);
+      console.warn('localStorage persist warning:', err);
+    }
+    setIsOnboarding(false);
+    setActiveConversationId(null);
+    setCurrentView('new-query');
+  };
+
+  // Fresh New Query Reset Handler: resets active conversation state and returns to Home
+  const handleNewQuery = () => {
+    setActiveConversationId(null);
+    setCurrentView('new-query');
+  };
+
+  // Recent Conversation Selection Handler: loads specific chat in State B
+  const handleSelectConversation = (convId) => {
+    setActiveConversationId(convId);
+    setCurrentView('conversation');
+  };
+
+  // First-Visit Onboarding Experience
+  if (isOnboarding) {
+    return (
+      <OnboardingExperience
+        onComplete={handleFinishOnboarding}
+        onSkip={handleFinishOnboarding}
+      />
+    );
+  }
+
+  // If navigating directly to login or signup authentication cards
+  if (currentView === 'login') {
+    return <LoginPage onNavigate={setCurrentView} />;
+  }
+
+  if (currentView === 'signup') {
+    return <SignupPage onNavigate={setCurrentView} />;
+  }
+
+  // Render view based on sidebar & header navigation
+  const renderView = () => {
+    switch (currentView) {
+      case 'new-query':
+      case 'conversation':
+        return (
+          <ConversationWorkspace
+            activeConversationId={activeConversationId}
+            onConversationUpdated={setActiveConversationId}
+            onNavigate={setCurrentView}
+            onStartNewQuery={handleNewQuery}
+          />
+        );
+      case 'dashboard':
+        return (
+          <DashboardPage
+            onNavigate={setCurrentView}
+            onNewQuery={handleNewQuery}
+            onSelectConversation={handleSelectConversation}
+          />
+        );
+      case 'monitoring':
+        return (
+          <MonitoringPage
+            onNavigate={setCurrentView}
+            onUnreadCountChange={setUnreadAlertsCount}
+          />
+        );
+      case 'history':
+        return (
+          <HistoryPage
+            onNavigate={setCurrentView}
+            onNewQuery={handleNewQuery}
+            onSelectConversation={handleSelectConversation}
+          />
+        );
+      case 'saved-results':
+        return (
+          <SavedResultsPage
+            onNavigate={setCurrentView}
+            onNewQuery={handleNewQuery}
+          />
+        );
+      case 'datasets':
+        return <DatasetsPage onNavigate={setCurrentView} />;
+      case 'help':
+        return (
+          <HelpDocsPage
+            onNavigate={setCurrentView}
+            onOpenHowItWorks={() => setShowHowItWorks(true)}
+          />
+        );
+      case 'settings':
+        return <SettingsPage onNavigate={setCurrentView} />;
+      default:
+        return (
+          <ConversationWorkspace
+            activeConversationId={activeConversationId}
+            onConversationUpdated={setActiveConversationId}
+            onNavigate={setCurrentView}
+            onStartNewQuery={handleNewQuery}
+          />
+        );
     }
   };
 
   return (
-    <div className="satquery-app">
-      <Header backendStatus={backendStatus} />
+    <>
+      <AppLayout
+        currentView={currentView}
+        onNavigate={setCurrentView}
+        activeConversationId={activeConversationId}
+        onSelectConversation={handleSelectConversation}
+        onNewQuery={handleNewQuery}
+        onOpenHowItWorks={() => setShowHowItWorks(true)}
+        unreadAlertsCount={unreadAlertsCount}
+        onSelectAlert={setActiveAlertModal}
+        onAlertsCountChange={setUnreadAlertsCount}
+      >
+        {renderView()}
+      </AppLayout>
 
-      <main className="app-main">
-        <div className="workspace-grid">
-          {/* Left Column: Satellite Viewer & HUD Stage */}
-          <ImageViewer
-            files={files}
-            onFilesChange={setFiles}
-            isAnalyzing={isAnalyzing}
-            evidence={response?.evidence}
-          />
+      {/* Persistent How SATQuery Works Modal */}
+      <HowItWorksModal
+        isOpen={showHowItWorks}
+        onClose={() => setShowHowItWorks(false)}
+      />
 
-          {/* Right Column: Query & Evidence-Grounded Results */}
-          <div className="query-results-column" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <QueryInput
-              query={query}
-              onQueryChange={setQuery}
-              onSubmit={handleSubmit}
-              isAnalyzing={isAnalyzing}
-              hasImages={files.length > 0}
-            />
-
-            <AnalysisProgress isAnalyzing={isAnalyzing} />
-
-            <ResultsPanel
-              response={response}
-              lastQuery={lastQuery}
-              error={error}
-            />
-
-            {response?.evidence && (
-              <EvidencePanel evidence={response.evidence} />
-            )}
-
-            {response?.execution_trace && (
-              <ExecutionTrace trace={response.execution_trace} />
-            )}
-          </div>
-        </div>
-
-        {/* System Architecture Section */}
-        <ArchitectureSection />
-      </main>
-    </div>
+      {/* Global Alert Detail Modal (for alerts opened from Header notification bell) */}
+      {activeAlertModal && (
+        <AlertDetailModal
+          alert={activeAlertModal}
+          onClose={() => setActiveAlertModal(null)}
+          onMarkRead={async () => {
+            setActiveAlertModal((prev) => (prev ? { ...prev, read: 1 } : null));
+            const fresh = await fetchUnreadAlertsCount();
+            setUnreadAlertsCount(fresh.unread_count || 0);
+          }}
+        />
+      )}
+    </>
   );
 }
 
+/**
+ * Root Application entry point wrapped in Supabase AuthProvider.
+ */
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}

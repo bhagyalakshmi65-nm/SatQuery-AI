@@ -79,10 +79,16 @@ export async function analyzeWithAgent(query, files = [], options = {}) {
   try {
     // CRITICAL: Do NOT set Content-Type header manually for FormData.
     // The browser automatically sets multipart/form-data with the boundary parameter.
+    const signals = [AbortSignal.timeout(timeoutMs)];
+    if (options.signal) signals.push(options.signal);
+    const effectiveSignal = (typeof AbortSignal.any === 'function') 
+      ? AbortSignal.any(signals) 
+      : (options.signal || AbortSignal.timeout(timeoutMs));
+
     const res = await fetch(`${API_BASE_URL}/api/agent/analyze`, {
       method: 'POST',
       body: formData,
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: effectiveSignal,
     });
 
     if (!res.ok) {
@@ -116,6 +122,14 @@ export async function analyzeWithAgent(query, files = [], options = {}) {
         steps: [],
         execution_time_ms: 0,
       },
+      counts: data.counts || {},
+      percentages: data.percentages || {},
+      detected_regions: data.detected_regions || [],
+      bounding_boxes: data.bounding_boxes || [],
+      visualizations: data.visualizations || [],
+      masks: data.masks || [],
+      why_this_answer: data.why_this_answer || [],
+      unsupported_analysis: data.unsupported_analysis || null,
       error: data.error || null,
     };
   } catch (err) {

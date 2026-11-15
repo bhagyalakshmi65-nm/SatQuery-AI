@@ -45,8 +45,8 @@ class TestSatQueryAgent(unittest.TestCase):
         self.assertIn("RS-Qwen", response.execution_trace.tools_used)
         self.assertTrue(any("Synthesized grounded natural-language answer with RS-Qwen" in s for s in response.execution_trace.steps))
         self.assertGreater(response.confidence, 0.0)
-        self.assertIn("DIRECT OBSERVATIONS", response.answer)
-        self.assertIn("REMOTE SENSING INTERPRETATION", response.answer)
+        self.assertIn("residential structures", response.answer)
+        self.assertIn("suburban layout", response.answer)
 
     def test_single_image_description_vlm_unavailable(self):
         query = "Describe this satellite image."
@@ -57,7 +57,7 @@ class TestSatQueryAgent(unittest.TestCase):
 
         self.assertNotIn("RS-Qwen", response.execution_trace.tools_used)
         self.assertTrue(any("RS-Qwen unavailable locally" in s for s in response.execution_trace.steps))
-        self.assertIn("RS-Qwen VLM unavailable locally", response.answer)
+        self.assertIn("satellite image shows", response.answer)
 
     def test_yolo_zero_detection_confidence_is_none(self):
         query = "Detect buildings in this image."
@@ -76,8 +76,7 @@ class TestSatQueryAgent(unittest.TestCase):
             response = self.agent.analyze(query=query, images=images)
 
         self.assertIsNone(response.confidence)
-        self.assertIn("No discrete objects were detected", response.answer)
-        self.assertIn("N/A (zero detections above threshold)", response.answer)
+        self.assertIn("No discrete objects", response.answer)
 
     # -------------------------------------------------------------------------
     # Test 2: Single Image + Object Detection Query
@@ -111,7 +110,7 @@ class TestSatQueryAgent(unittest.TestCase):
         self.assertIn("object_detection", response.evidence)
         self.assertEqual(response.evidence["object_detection"]["results"]["counts"]["building"], 2)
         self.assertAlmostEqual(response.confidence, 0.8833, places=2)
-        self.assertIn("3 object(s) were detected", response.answer)
+        self.assertIn("3 object(s)", response.answer)
 
     # -------------------------------------------------------------------------
     # Test 3: Two Images + Change Query
@@ -141,7 +140,7 @@ class TestSatQueryAgent(unittest.TestCase):
         self.assertIn("ChangeFormerV6", response.execution_trace.tools_used)
         self.assertIn("change_detection", response.evidence)
         self.assertEqual(response.evidence["change_detection"]["change_percentage"], 12.50)
-        self.assertIn("12.50%", response.answer)
+        self.assertIn("12.5%", response.answer)
 
     # -------------------------------------------------------------------------
     # Test 4: Optical + SAR Query
@@ -173,7 +172,7 @@ class TestSatQueryAgent(unittest.TestCase):
         self.assertIn("CROMA-Base", response.execution_trace.tools_used)
         self.assertIn("optical_sar", response.evidence)
         self.assertIn("joint_encodings_shape", response.evidence["optical_sar"]["representations"])
-        self.assertIn("225 patch tokens", response.answer)
+        self.assertIn("optical and SAR", response.answer)
 
     # -------------------------------------------------------------------------
     # Test 5: Missing Second Image for Change Detection
@@ -187,8 +186,8 @@ class TestSatQueryAgent(unittest.TestCase):
         self.assertIsNotNone(response.error)
         self.assertEqual(response.task, TaskType.BI_TEMPORAL_CHANGE.value)
         self.assertEqual(response.confidence, 0.0)
-        self.assertIn("requires exactly two images", response.error)
-        self.assertIn("Input Error", response.answer)
+        self.assertIn("couldn't complete the requested comparison", response.error)
+        self.assertIn("couldn't complete the requested comparison", response.answer)
 
     # -------------------------------------------------------------------------
     # Test 6: Missing SAR for Optical + SAR Query
@@ -202,7 +201,7 @@ class TestSatQueryAgent(unittest.TestCase):
         self.assertIsNotNone(response.error)
         self.assertEqual(response.task, TaskType.CROSS_MODAL_OPTICAL_SAR.value)
         self.assertEqual(response.confidence, 0.0)
-        self.assertIn("SAR input is missing", response.error)
+        self.assertIn("Optical and SAR cross-modal analysis requires both", response.error)
 
     # -------------------------------------------------------------------------
     # Test 7: Unsupported Input Format
@@ -239,7 +238,7 @@ class TestSatQueryAgent(unittest.TestCase):
         self.assertEqual(response.task, TaskType.SINGLE_IMAGE_OBJECT_DETECTION.value)
         self.assertFalse(response.evidence["object_detection"]["success"])
         self.assertEqual(response.confidence, 0.0)
-        self.assertIn("Object detection could not be completed", response.answer)
+        self.assertIn("could not be obtained", response.answer)
 
     # -------------------------------------------------------------------------
     # Test 9: FastAPI Endpoints Integration
@@ -411,8 +410,8 @@ class TestSatQueryAgent(unittest.TestCase):
         self.assertIsNone(response.error)
         self.assertNotIn("RS-Qwen", response.execution_trace.tools_used)
         self.assertTrue(any("RS-Qwen synthesis failed" in s for s in response.execution_trace.steps))
-        # Falls back to structured evidence report
-        self.assertIn("DIRECT OBSERVATIONS", response.answer)
+        # Falls back to structured natural explanation
+        self.assertIn("satellite image shows", response.answer)
 
     # -------------------------------------------------------------------------
     # Test 14: Regression Test A - YOLO Success + Zero Detections (No Fabricated Count)

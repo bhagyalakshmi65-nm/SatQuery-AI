@@ -161,12 +161,15 @@ def generate_response(
     messages = build_multimodal_message(validated_image, question)
 
     # 5. Process vision and text inputs
-    from qwen_vl_utils import process_vision_info
+    try:
+        from qwen_vl_utils import process_vision_info
+        image_inputs, video_inputs = process_vision_info(messages)
+    except ImportError:
+        image_inputs, video_inputs = None, None
 
     prompt_text = processor.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True
     )
-    image_inputs, video_inputs = process_vision_info(messages)
 
     inputs = processor(
         text=[prompt_text],

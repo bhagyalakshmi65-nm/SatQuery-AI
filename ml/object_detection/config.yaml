@@ -3,6 +3,13 @@
 # Module: ml/object_detection
 # =====================================================================
 
+inference:
+  confidence_threshold: 0.35  # Configurable confidence threshold for production inferences
+  imgsz: 640
+  max_det: 1089
+  line_width: 2
+  box_color: "#06B6D4"        # High-contrast cyan border for building footprints
+
 dataset:
   name: "xView_full"
   # Read-only source paths on external drive R:

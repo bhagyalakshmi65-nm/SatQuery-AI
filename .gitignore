@@ -239,3 +239,12 @@ node_modules/
 
 # Temporary uploads
 backend/temp_uploads/
+
+# Local database
+backend/data/
+
+# Generated model outputs
+ml/object_detection/outputs/
+
+# Scratch files
+scratch/

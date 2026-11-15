@@ -121,21 +121,72 @@ def validate_and_preprocess_inputs(
             f"but got shape {list(sar_tensor.shape)} with {sar_tensor.ndim} dimensions."
         )
 
-    # Validate channel dimensions
+    # Validate and adapt channel dimensions for exported satellite images (JPG, PNG, RGB GeoTIFF)
     opt_channels = opt_tensor.shape[1]
-    if opt_channels != OPTICAL_CHANNELS:
+    if opt_channels == 12:
+        pass  # Native Sentinel-2 12-band
+    elif opt_channels == 3:
+        # Standard RGB satellite export: synthesize 12 Sentinel-2 bands
+        # (B01, B02, B03, B04, B05, B06, B07, B08, B8A, B09, B11, B12)
+        r = opt_tensor[:, 0:1, :, :]
+        g = opt_tensor[:, 1:2, :, :]
+        b = opt_tensor[:, 2:3, :, :]
+        b01 = b * 0.95
+        b02 = b
+        b03 = g
+        b04 = r
+        b05 = (r + g) * 0.5
+        b06 = (r + g) * 0.52
+        b07 = (r + g) * 0.55
+        b08 = (r * 0.4 + g * 0.6) * 1.1
+        b8a = (r * 0.4 + g * 0.6) * 1.05
+        b09 = (b + g) * 0.48
+        b11 = r * 0.75
+        b12 = r * 0.65
+        opt_tensor = torch.cat([b01, b02, b03, b04, b05, b06, b07, b08, b8a, b09, b11, b12], dim=1)
+    elif opt_channels == 4:
+        # RGBA: extract RGB and synthesize 12 bands
+        r = opt_tensor[:, 0:1, :, :]
+        g = opt_tensor[:, 1:2, :, :]
+        b = opt_tensor[:, 2:3, :, :]
+        b01 = b * 0.95
+        b02 = b
+        b03 = g
+        b04 = r
+        b05 = (r + g) * 0.5
+        b06 = (r + g) * 0.52
+        b07 = (r + g) * 0.55
+        b08 = (r * 0.4 + g * 0.6) * 1.1
+        b8a = (r * 0.4 + g * 0.6) * 1.05
+        b09 = (b + g) * 0.48
+        b11 = r * 0.75
+        b12 = r * 0.65
+        opt_tensor = torch.cat([b01, b02, b03, b04, b05, b06, b07, b08, b8a, b09, b11, b12], dim=1)
+    elif opt_channels == 1:
+        opt_tensor = opt_tensor.repeat(1, OPTICAL_CHANNELS, 1, 1)
+    else:
         raise ValueError(
-            f"Invalid optical input: expected {OPTICAL_CHANNELS} channels "
-            f"(Sentinel-2 B01-B12: B01, B02, B03, B04, B05, B06, B07, B08, B8A, B09, B11, B12), "
-            f"but received {opt_channels} channels (shape {list(opt_tensor.shape)})."
+            f"Invalid optical input: expected 3 (RGB) or {OPTICAL_CHANNELS} channels "
+            f"(Sentinel-2 B01-B12), but received {opt_channels} channels."
         )
 
     sar_channels = sar_tensor.shape[1]
-    if sar_channels != SAR_CHANNELS:
+    if sar_channels == 2:
+        pass  # Native Sentinel-1 dual-polarization (VV, VH)
+    elif sar_channels == 1:
+        # Grayscale SAR backscatter export: channel 0 as VV, synthesize VH
+        vv = sar_tensor[:, 0:1, :, :]
+        vh = vv * 0.55
+        sar_tensor = torch.cat([vv, vh], dim=1)
+    elif sar_channels >= 3:
+        # 3-channel SAR export (grayscale stored in RGB or pseudo-color)
+        vv = sar_tensor[:, 0:1, :, :]
+        vh = sar_tensor[:, 1:2, :, :] * 0.55 if sar_channels >= 2 else vv * 0.55
+        sar_tensor = torch.cat([vv, vh], dim=1)
+    else:
         raise ValueError(
-            f"Invalid SAR input: expected {SAR_CHANNELS} channels "
-            f"(Sentinel-1 dual-polarization: VV, VH), "
-            f"but received {sar_channels} channels (shape {list(sar_tensor.shape)})."
+            f"Invalid SAR input: expected 1 or {SAR_CHANNELS} channels "
+            f"(Sentinel-1 dual-polarization: VV, VH), but received {sar_channels} channels."
         )
 
     # Validate batch sizes match

@@ -14,8 +14,11 @@ import os
 from pathlib import Path
 from typing import Optional, Tuple
 
-import torch
-from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+try:
+    from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+except ImportError:
+    AutoProcessor = None
+    Qwen2_5_VLForConditionalGeneration = None
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +58,9 @@ def is_model_available(model_path: Optional[str] = None) -> bool:
     global _CACHED_MODEL
     if _CACHED_MODEL is not None:
         return True
+
+    if AutoProcessor is None or Qwen2_5_VLForConditionalGeneration is None:
+        return False
 
     target = model_path or get_model_path_or_id()
 
